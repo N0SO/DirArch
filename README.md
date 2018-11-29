@@ -1,2 +1,2 @@
-# DirArch
-Archive a directory of files.
+# dirarch
+Archive a collection of files with the specified creation date in the specified location.
