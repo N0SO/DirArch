@@ -1,13 +1,16 @@
 #!/usr/bin/python
 """
-dirarch - Archive a collection of files with the specified creation date in the specified location.
+dirarch - Archive a collection of files with the specified creation date or older,
+          from the specified location.
 """
 
 import argparse
+import os, sys, time, shutil
 from stat import S_ISREG, ST_CTIME, ST_MODE
-import os, sys, time
+#import datetime
+#from dateutil.parser import parse
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 class get_args():
     def __init__(self):
@@ -18,9 +21,9 @@ class get_args():
         usageSTG = ('dirarch.py --date <date> '
                     '--indirectory <source directory> '
                     '--outdirectory <destination directory>')
-        aboutSTG = ('Utility to move all files with creation date specified by --date '
-                    'in the source directory specified by --indirectory to '
-                    'the destination specified by --outdirectory.')
+        aboutSTG = ('Utility to move all files with a --date creation date (or older) in the '
+                    'source directory specified --indirectory to the destination directory '
+                    'specified by --outdirectory.')
 
         parser = argparse.ArgumentParser(usage=usageSTG,
                                          description=aboutSTG,
@@ -51,9 +54,13 @@ class DirArch():
         return path
     
     def get_target_date(self, args):
-        target_date = ""
-        target_date = args.args.date
-        return target_date
+        temp_date = ""
+        temp_date = args.args.date
+        if ('TODAY' in temp_date):
+           target_date = time.mktime(time.localtime())
+        else:
+           target_date = time.mktime(time.strptime(temp_date, '%Y-%m-%d'))
+        return int(target_date)
         
     def get_file_list(self, inpath):
         #all entries in the directory w/ stats
@@ -67,7 +74,7 @@ class DirArch():
     
     def appMain(self):
         args = get_args()
-        date = self.get_target_date(args)
+        tdate = self.get_target_date(args)
         inpath = self.get_inpath(args)
         outpath = self.get_outpath(args)
         #print ('Inpath = %s\nOutpath = %s\nDate = %s'%(inpath, outpath, date))
@@ -75,8 +82,15 @@ class DirArch():
         fileList = self.get_file_list(inpath)
    
         for cdate, path in sorted(fileList):
-              print('%s\t%s'%(time.ctime(cdate), os.path.basename(path)))
-       
+              if (tdate >= cdate):
+                 print('%s\t%s'%(time.ctime(cdate), os.path.basename(path)))
+                 # adding exception handling
+                 try:
+                    shutil.copy(path, outpath)
+                 except IOError as e:
+                    print("Unable to copy file. %s" % e)
+                 except:
+                    print("Unexpected error:", sys.exc_info())    
 
 
 #
