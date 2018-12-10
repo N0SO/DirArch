@@ -18,11 +18,8 @@ optional arguments:
                         Specifies the destination directory for the files.
 
 %To Do List: (updated 2018-12-08)
-1. Add check to verify the destination path exists.
-2. Add functionality to create directory structure YYYY/MM/DD/ if it does
-   not already exist.
-3. Beef up error handling for cases when file copy fails.
-4. Add functionality to delete the local files (from the inpath) once 
+1. Beef up error handling for cases when file copy fails.
+2. Add functionality to delete the local files (from the inpath) once 
    successfully copied.
 
 %changelog
@@ -31,3 +28,9 @@ optional arguments:
 * Sat Dec 08 2018 Mike Heitmann, N0SO <n0so@arrl.net>
 - V0.0.2 - Very limited functionality. It works, but needs tuning.
 - Added usage text, todo list and changelog to this file.
+* Sun Dec 09 2018 Mike Heitmann, N0SO <n0so@arrl.net>
+- V0.0.3 - Added usage and changelog to main source file.
+- Moved code to copy files to methode copy_files().
+- Added code to verify base path exists.
+- Added code to create YYYY/MM/DD directory structure if it
+- does not exist.
