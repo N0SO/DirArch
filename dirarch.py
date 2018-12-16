@@ -31,6 +31,17 @@ dirarch - Archive a collection of files with the specified creation date or olde
 - Added code to verify base path exists.
 - Added code to create YYYY/MM/DD directory structure if it
 - does not exist.
+* Sun Dec 16 2018 Mike Heitmann, N0SO <n0so@arrl.net>
+- V0.0.4 - Moved check for an empty file list before the
+- creation of YYYY/MM/DD directories. No need to create
+- if no data exists.
+- Sorted files in output directory by the file cdate instead
+- of the specified command line --date option. That way files
+- older than --date will be sorted properly.
+- Added --removefiles option - files copied successfully will
+- be deleted from the source if this flag is set as TRUE. If
+- the file move fails, the file (and all subsequent files)
+- will not be deleted
 """
 
 import argparse
@@ -39,7 +50,7 @@ from stat import S_ISREG, ST_CTIME, ST_MODE
 #import datetime
 #from dateutil.parser import parse
 
-VERSION = '0.0.3'
+VERSION = '0.0.4'
 
 class get_args():
     def __init__(self):
@@ -64,6 +75,8 @@ class get_args():
             help="Specifies the source directory of the files to be moved")
         parser.add_argument("-o", "--outdirectory", default='./',
             help="Specifies the destination directory for the files.")
+        parser.add_argument("-r", "--removefiles", default='False',
+            help="Remove files successfully copied from the source directory. Default is do not remove files.") 
         return parser.parse_args()
 
 class DirArch():
@@ -82,6 +95,13 @@ class DirArch():
         path = args.args.outdirectory
         return path
     
+    def get_remove(self, args):
+        removeFlag = False
+        removestg = args.args.removefiles
+        if ('TRUE' in removestg.upper()):
+           removeFlag=True
+        return removeFlag
+
     def get_target_date(self, args):
         temp_date = ""
         temp_date = args.args.date
@@ -91,15 +111,17 @@ class DirArch():
            target_date = time.mktime(time.strptime(temp_date, '%Y-%m-%d-%H:%M'))
         return int(target_date)
         
-    def get_file_list(self, inpath):
+    def get_file_list(self, inpath, tdate):
         #all entries in the directory w/ stats
+        retdata = []
         data = (os.path.join(inpath, fn) for fn in os.listdir(inpath))
         data = ((os.stat(path), path) for path in data)
-
-        # regular files, insert creation date
-        data = ((stat[ST_CTIME], path)
-              for stat, path in data if S_ISREG(stat[ST_MODE]))
-        return data
+        for stat, path in data:
+           if S_ISREG(stat[ST_MODE]):
+              cdate = stat[ST_CTIME]
+              if cdate <= tdate:
+                 retdata.append([cdate, path])
+        return retdata
 
     def set_fullPath(self, basepath, tdate):
         retpath = basepath
@@ -122,35 +144,46 @@ class DirArch():
            os.mkdir(retpath)
         return retpath
 
-    def copy_files(self, fileList, outpath, tdate):
+    def copy_files(self, fileList, outpath, tdate, deleteFiles = False):
         success = True
         for cdate, path in sorted(fileList):
               if (cdate <= tdate):
-                 print('%d, %d, %s\t%s'%(tdate, cdate, time.ctime(cdate), os.path.basename(path)))
+                 #Set path for this file
+                 thisfileoutpath = self.set_fullPath(outpath, cdate)
+                 #Log file copy and copy it
+                 print('Copy %s (%s) to %s'%(path, time.ctime(cdate), thisfileoutpath))
                  # adding exception handling
                  try:
-                    shutil.copy(path, outpath)
+                    shutil.copy(path, thisfileoutpath)
                  except IOError as e:
                     print("Unable to copy file. %s" % e)
                     success = False
                  except:
                     print("Unexpected error:", sys.exc_info())    
                     success = False
+                 if (success):
+                    #delete file if copied successfully
+                    if (deleteFiles):
+                       os.remove(path)
         return success
     
     def appMain(self):
+        result = False
         args = get_args()
         tdate = self.get_target_date(args)
         inpath = self.get_inpath(args)
+        removeFlag = self.get_remove(args)
         outpath = self.get_outpath(args)
         #print ('Inpath = %s\nOutpath = %s\nDate = %s'%(inpath, outpath, date))
 
         if (os.path.exists(outpath)):
-           fileList = self.get_file_list(inpath)
-       
-           fullpath = self.set_fullPath(outpath, tdate)
-
-           self.copy_files(fileList, fullpath, tdate) 
+           fileList = self.get_file_list(inpath, tdate)
+           
+           if (len(fileList) > 0):
+              #fullpath = self.set_fullPath(outpath, tdate)
+              result = self.copy_files(fileList, outpath, tdate, removeFlag) 
+              
+           print ('Result of file copy = %s'%(result))
 
 #
 # Main program for running stand-alone
