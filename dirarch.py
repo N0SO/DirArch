@@ -18,6 +18,10 @@ dirarch - Archive a collection of files with the specified creation date or olde
                                 moved
           -o OUTDIRECTORY, --outdirectory OUTDIRECTORY
                                 Specifies the destination directory for the files.
+          -l LOGFILE --logfile LOGFILE
+                                Specify the the file name of the logfile. This file
+                                will be copied to OUTDIRECTORY and the original
+                                will be deleted after files are copied.
 
 %changelog
 * Thu Nov 29 2018 Mike Heitmann, N0SO <n0so@arrl.net>
@@ -41,7 +45,12 @@ dirarch - Archive a collection of files with the specified creation date or olde
 - Added --removefiles option - files copied successfully will
 - be deleted from the source if this flag is set as TRUE. If
 - the file move fails, the file (and all subsequent files)
-- will not be deleted
+- will not be deleted.
+* Sun Apr 21 2019 Mike Heitmann, N0SO <n0so@arrl.net>
+- V0.0.5 - Added -l, --logfile option to redirect STDOUT/
+-   STDERR to a file, then copy that file to the OUTDIRECTORY
+-   and delete the log.    
+
 """
 
 import argparse
@@ -50,7 +59,7 @@ from stat import S_ISREG, ST_CTIME, ST_MODE
 #import datetime
 #from dateutil.parser import parse
 
-VERSION = '0.0.4'
+VERSION = '0.0.5'
 
 class get_args():
     def __init__(self):
@@ -75,6 +84,8 @@ class get_args():
             help="Specifies the source directory of the files to be moved")
         parser.add_argument("-o", "--outdirectory", default='./',
             help="Specifies the destination directory for the files.")
+        parser.add_argument("-l", "--logfile", default=None,
+            help="Specifies a log output file name. If not specified messages go to console.")
         parser.add_argument("-r", "--removefiles", default='False',
             help="Remove files successfully copied from the source directory. Default is do not remove files.") 
         return parser.parse_args()
@@ -111,6 +122,39 @@ class DirArch():
            target_date = time.mktime(time.strptime(temp_date, '%Y-%m-%d-%H:%M'))
         return int(target_date)
         
+    def get_logpath(self, args):
+        """
+           Redirect STDOUT, STDERR to args.logfile
+           if that option is provided
+        """
+        retpath = args.args.logfile
+        if (retpath):
+           retpath += time.strftime("-%Y%m%d-%H%M%S.txt")
+           retsock = open(retpath, 'w')
+           self.old_stdout = sys.stdout
+           self.old_stderr = sys.stderr
+           sys.stdout = sys.stderr = retsock
+        return retpath
+        
+    def savelogfile(self,logpath, outpath):
+       success = False
+       if (logpath):
+	      success = True
+	      #Switch back to original STDIN, STDERR
+	      logsock = sys.stdout
+	      sys.stdout = self.old_stdout
+	      sys.stderr = self.old_stderr
+	      try:
+	         logsock.close()
+	         shutil.copy(logpath, outpath)
+	      except IOError as e:
+	         print("Unable to copy file. %s" % e)
+	         success = False
+	      except:
+	         print("Unexpected error:", sys.exc_info())    
+	         success = False
+       return success
+
     def get_file_list(self, inpath, tdate):
         #all entries in the directory w/ stats
         retdata = []
@@ -146,6 +190,7 @@ class DirArch():
 
     def copy_files(self, fileList, outpath, tdate, deleteFiles = False):
         success = True
+        filecount = 0
         for cdate, path in sorted(fileList):
               if (cdate <= tdate):
                  #Set path for this file
@@ -162,10 +207,11 @@ class DirArch():
                     print("Unexpected error:", sys.exc_info())    
                     success = False
                  if (success):
+                    filecount += 1
                     #delete file if copied successfully
                     if (deleteFiles):
                        os.remove(path)
-        return success
+        return success, filecount
     
     def appMain(self):
         result = False
@@ -174,6 +220,7 @@ class DirArch():
         inpath = self.get_inpath(args)
         removeFlag = self.get_remove(args)
         outpath = self.get_outpath(args)
+        logpath = self.get_logpath(args)
         #print ('Inpath = %s\nOutpath = %s\nDate = %s'%(inpath, outpath, date))
 
         if (os.path.exists(outpath)):
@@ -181,9 +228,12 @@ class DirArch():
            
            if (len(fileList) > 0):
               #fullpath = self.set_fullPath(outpath, tdate)
-              result = self.copy_files(fileList, outpath, tdate, removeFlag) 
+              result, filecount = self.copy_files(fileList, outpath, tdate, removeFlag) 
               
-           print ('Result of file copy = %s'%(result))
+           print ('Result of file success = %s, copied %d files.'%(result, filecount))
+           
+           if(self.savelogfile(logpath, outpath)):
+              os.remove(logpath)
 
 #
 # Main program for running stand-alone

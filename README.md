@@ -1,24 +1,25 @@
-# dirarch
-usage: dirarch.py --date <date> --indirectory <source directory> --outdirectory <destination directory>
+dirarch - Archive a collection of files with the specified creation date or older,
+          from the specified location.
+          
+          usage: dirarch.py --date <date> --indirectory <source directory> --outdirectory <destination directory>
 
-Utility to move all files with a --date creation date (or older) in the source
-directory specified --indirectory to the destination directory specified by
---outdirectory.
+          Utility to move all files with a --date creation date (or older) in the 
+          source directory specified --indirectory to the destination directory 
+          specified by --outdirectory.
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -v, --version         show program's version number and exit
-  -d DATE, --date DATE  Specifies the date of the files to be moved
-  -i INDIRECTORY, --indirectory INDIRECTORY
-                        Specifies the source directory of the files to be
-                        moved
-  -o OUTDIRECTORY, --outdirectory OUTDIRECTORY
-                        Specifies the destination directory for the files.
-  -r REMOVEFILES, --removefiles REMOVEFILES
-                        Remove files successfully copied from the source
-                        directory. Default is do not remove files.
-                        
-%To Do List: (updated 2018-12-16)
+          optional arguments:
+          -h, --help            show this help message and exit
+          -v, --version         show program's version number and exit
+          -d DATE, --date DATE  Specifies the date of the files to be moved
+          -i INDIRECTORY, --indirectory INDIRECTORY
+                                Specifies the source directory of the files to be
+                                moved
+          -o OUTDIRECTORY, --outdirectory OUTDIRECTORY
+                                Specifies the destination directory for the files.
+          -l LOGFILE --logfile LOGFILE
+                                Specify the the file name of the logfile. This file
+                                will be copied to OUTDIRECTORY and the original
+                                will be deleted after files are copied.
 
 %changelog
 * Thu Nov 29 2018 Mike Heitmann, N0SO <n0so@arrl.net>
@@ -42,4 +43,8 @@ optional arguments:
 - Added --removefiles option - files copied successfully will
 - be deleted from the source if this flag is set as TRUE. If
 - the file move fails, the file (and all subsequent files)
-- will not be deleted
+- will not be deleted.
+* Sun Apr 21 2019 Mike Heitmann, N0SO <n0so@arrl.net>
+- V0.0.5 - Added -l, --logfile option to redirect STDOUT/
+-   STDERR to a file, then copy that file to the OUTDIRECTORY
+-   and delete the log.    
